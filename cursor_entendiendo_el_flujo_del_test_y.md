@@ -215,3 +215,98 @@ const apiDMaccounts = testEl.shadowRoot.querySelector('#dmAccounts');
 customDispatchEvent(apiDMaccounts, 'account-api-dm-fetch', response);
 ```
 
+----------
+
+¡Excelente pregunta! Tienes razón en tu confusión. Te explico exactamente qué está pasando:
+
+## **El Test está Simulando un Flujo Completo**
+
+### **1. ¿Por qué se dispara manualmente `account-api-dm-fetch`?**
+
+En el test, **NO** estamos haciendo una petición HTTP real a la API de BBVA. En su lugar, estamos **simulando** lo que pasaría cuando la API responde. 
+
+```javascript
+// Esto NO hace una petición HTTP real
+customDispatchEvent(apiDMaccounts, 'account-api-dm-fetch', response);
+```
+
+### **2. ¿Es un stub?**
+
+**¡Exactamente!** Es un stub/mock. El test está simulando:
+
+1. **La petición HTTP** (que normalmente haría `bbva-local-accounts-api-dm`)
+2. **La respuesta de la API** (que normalmente vendría del servidor de BBVA)
+
+### **3. ¿Por qué se usa data diferente?**
+
+Aquí está la clave del test:
+
+**Data inicial (dashboard):**
+```javascript
+DASHBOARD_ACCOUNTS_ALIAS_VALIDATION_MOCK = [
+  {
+    products: [
+      {
+        alias: 'alias-from-selected',  // ← Alias inicial del dashboard
+        // ... otros datos
+      }
+    ]
+  }
+]
+```
+
+**Data de la API (simulada):**
+```javascript
+RESPONSE_ACCOUNT_ALIAS_VALIDATION_CUSTOM_ALIAS = {
+  product: { 
+    alias: 'MiAliasPersonalizado',  // ← Alias personalizado de la API
+    // ... otros datos
+  }
+}
+```
+
+### **4. ¿Por qué son diferentes?**
+
+El test está validando un **escenario real**:
+
+1. **Dashboard** tiene un alias: `'alias-from-selected'`
+2. **API** responde con un alias diferente: `'MiAliasPersonalizado'`
+3. **Componente** debe decidir cuál usar basándose en la validación
+
+### **5. Flujo Real vs Test**
+
+**En producción:**
+```mermaid
+graph TD
+    A[Usuario selecciona cuenta] --> B[Dashboard envía alias: 'alias-from-selected']
+    B --> C[Componente hace petición HTTP a API]
+    C --> D[API responde con alias: 'MiAliasPersonalizado']
+    D --> E[Componente valida cuál alias usar]
+    E --> F[Componente dispara evento con alias final]
+```
+
+**En el test:**
+```mermaid
+graph TD
+    A[Test configura dashboard] --> B[Test simula alias: 'alias-from-selected']
+    B --> C[Test simula respuesta de API]
+    C --> D[Test simula alias: 'MiAliasPersonalizado']
+    D --> E[Componente valida cuál alias usar]
+    E --> F[Test verifica que se use el alias correcto]
+```
+
+----------
+
+### **6. ¿Por qué no usar la misma data?**
+
+Porque el test está validando que el componente maneje correctamente el caso donde:
+- El dashboard tiene un alias
+- La API responde con un alias diferente
+- El componente debe aplicar la lógica de validación para decidir cuál usar
+
+### **Conclusión**
+
+Sí, `customDispatchEvent(apiDMaccounts, 'account-api-dm-fetch', response)` es un **stub/mock** que simula la respuesta de la API. El test usa data diferente porque está validando un escenario real donde el dashboard y la API pueden tener información diferente, y el componente debe aplicar la lógica de validación para decidir cuál usar.
+
+Es como si estuvieras probando: "¿Qué pasa si el dashboard dice que el alias es X, pero la API responde que es Y? ¿El componente maneja esto correctamente?"
+
