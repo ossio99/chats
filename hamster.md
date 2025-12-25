@@ -1,3 +1,4 @@
+# First question
 Te ayudo a entender el flujo completo de las ofertas en la sección de oportunidades, usando la **portabilidad de nómina** como ejemplo. Aquí está el análisis detallado:
 
 ## 📋 Arquitectura del Sistema de Ofertas
@@ -85,54 +86,54 @@ _cross-components.js
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. INICIO - contractProductSection.js                      │
-│    - Usuario navega a oportunidades                        │
+│ 1. INICIO - contractProductSection.js                       │
+│    - Usuario navega a oportunidades                         │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 2. glomo-campaigns-dm-mx                                    │
-│    - Llama API: /campaigns/v1                              │
-│    - Filtra ofertas según includeOffers                    │
-│    - Aplica customizableOffers                             │
+│    - Llama API: /campaigns/v1                               │
+│    - Filtra ofertas según includeOffers                     │
+│    - Aplica customizableOffers                              │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. Parseo de Ofertas                                        │
-│    - getCampaigns() desde _utils.js                        │
-│    - Mapea códigos a configuraciones                       │
-│    - Envía: contract_product_section_offers_parsed         │
+│    - getCampaigns() desde _utils.js                         │
+│    - Mapea códigos a configuraciones                        │
+│    - Envía: contract_product_section_offers_parsed          │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 4. cells-oc-banner-list-spherica                           │
-│    - Recibe array de ofertas                               │
-│    - Renderiza cada banner                                 │
-│    - Banner destacado (featured: [1])                      │
+│ 4. cells-oc-banner-list-spherica                            │
+│    - Recibe array de ofertas                                │
+│    - Renderiza cada banner                                  │
+│    - Banner destacado (featured: [1])                       │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 5. Usuario hace clic en oferta                             │
-│    - Dispara: cells-oc-banner-click-payroll-portability   │
+│ 5. Usuario hace clic en oferta                              │
+│    - Dispara: cells-oc-banner-click-payroll-portability     │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ├──────────────────────────────────────┐
                       ▼                                      ▼
 ┌───────────────────────────────────┐  ┌──────────────────────────────┐
-│ 6A. Analytics                     │  │ 6B. Navegación              │
-│ - glomo-analytics-oc-banner-mgr   │  │ - glomo-navigation-handler  │
-│ - Envía APP_ON_CLICK_START        │  │ - Navega a:                │
-│ - Tracking de conversión          │  │   ocPayrollPortability      │
+│ 6A. Analytics                     │  │ 6B. Navegación               │
+│ - glomo-analytics-oc-banner-mgr   │  │ - glomo-navigation-handler   │
+│ - Envía APP_ON_CLICK_START        │  │ - Navega a:                  │
+│ - Tracking de conversión          │  │   ocPayrollPortability       │
 └───────────────────────────────────┘  └──────────┬───────────────────┘
                                                    │
                                                    ▼
                                     ┌──────────────────────────────────┐
                                     │ 7. ocPayrollPortability.js       │
-                                    │    - Carga flujo de portabilidad│
-                                    │    - Recibe offerId como param  │
+                                    │    - Carga flujo de portabilidad │
+                                    │    - Recibe offerId como param   │
                                     └──────────────────────────────────┘
 ```
 
@@ -257,6 +258,7 @@ featureFlag: {
 9. ✅ Feature flag (opcional)
 10. ✅ Testing en e2e
 
+# Second question 
 Excelente pregunta. Los valores **NO son arbitrarios**, siguen **convenciones estrictas** y **patrones específicos** para que todo el sistema funcione correctamente. Te explico cada tipo de valor:
 
 ## 🎯 **1. CÓDIGOS DE PRODUCTO (productName)**
@@ -273,16 +275,6 @@ productName: {
 - Deben coincidir con el código que devuelve el backend en `/campaigns/v1`
 - Se usan para tracking y reportes
 - **NO son inventables** 
-
-Searched for regex `0557|0788|0766|0813` (`**/app/composerMocksTpl/**/*.js`), 17 results
-
-Read [](file:///Users/Xmf0130/Dev/Bbva/glomo-mx/app/composerMocksTpl/common/helpers/_constants.js#1-1), lines 1 to 400
-
-Searched for text `cells-oc-banner-click` (`**/app/composerMocksTpl/**/*.js`), 11 results
-
-Read [](file:///Users/Xmf0130/Dev/Bbva/glomo-mx/app/composerMocksTpl/common/helpers/_utils.js#100-100), lines 100 to 1040
-
-Perfecto. Ahora te muestro las **REGLAS Y CONVENCIONES** que debes seguir:
 
 ## 🔐 **REGLAS DE NOMENCLATURA Y CONVENCIONES**
 
@@ -319,10 +311,6 @@ page: 'oc-payroll-portability'  // ❌ INCORRECTO
 ### **3. BINDINGS - Convención Automática** ⚙️
 
 Los bindings se **generan automáticamente** siguiendo estas reglas: 
-
-Read [](file:///Users/Xmf0130/Dev/Bbva/glomo-mx/app/composerMocksTpl/common/helpers/_utils.js#1040-1040), lines 1040 to 1070
-
-Perfecto. Te muestro la **TRANSFORMACIÓN AUTOMÁTICA**:
 
 ```javascript
 // ENTRADA (lo que defines):
