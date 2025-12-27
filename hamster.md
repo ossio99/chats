@@ -533,7 +533,7 @@ analytics-oc-banner-clicked-personal-loan-express
 3. Código de producto oficial
 4. El resto se construye por convención
 
-Excelentes preguntas, voy a aclarar cada punto con ejemplos concretos del código:
+# Third question
 
 ## 1️⃣ **productName: ¿Cuál es el código oficial?** 
 
