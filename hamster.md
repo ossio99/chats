@@ -532,3 +532,243 @@ analytics-oc-banner-clicked-personal-loan-express
 2. Página en `camelCase` (que exista)
 3. Código de producto oficial
 4. El resto se construye por convención
+
+Excelentes preguntas, voy a aclarar cada punto con ejemplos concretos del código:
+
+## 1️⃣ **productName: ¿Cuál es el código oficial?** 
+
+Perfecto, ahora te muestro:
+
+### ✅ **Respuesta 1: productName - Código Oficial**
+
+```javascript
+productName: {
+  '0557': 'cuenta nomina'
+  // ^^^^   ^^^^^^^^^^^^^^
+  // CLAVE  VALOR
+}
+```
+
+**La CLAVE numérica `'0557'` es el CÓDIGO OFICIAL del catálogo BBVA**
+- **NO es arbitrario** 
+- Es el **LDA (Línea De Actividad)** del producto
+- Viene del **backend** en la respuesta de campaigns API
+- Se usa para tracking, reportes y debe coincidir con el sistema de catálogos BBVA
+
+**El VALOR `'cuenta nomina'` es SEMI-ARBITRARIO**
+- Es descriptivo para reportes de analytics
+- Debe ser consistente con Adobe Analytics
+- Usado en `products.attributes.0.productName` en digitalData
+- **Debe coincidir** con lo que espera el equipo de analytics
+
+Puedes ver que el código `0557` se usa en otros lugares (dashboard/_operationals.js) confirmando que es un código oficial del sistema.
+
+---
+
+## 2️⃣ **_constants.js - ¿A qué nivel define la oferta?** 
+
+### ✅ **Respuesta 2: _constants.js define a NIVEL DE SISTEMA COMPLETO**
+
+_constants.js es el **MAPEO CENTRAL** que:
+
+1. **Define qué ofertas existen en el sistema** (catálogo de ofertas)
+2. **Mapea código → página destino** (enrutamiento)
+3. **Se usa en MÚLTIPLES lugares**:
+
+```javascript
+// _constants.js
+OCPP: {
+  code: 'payroll-portability',     // ← Identificador único
+  link: {
+    page: 'ocPayrollPortability',  // ← A qué página navega
+    params: { offerId: 'offerId' } // ← Qué parámetros necesita
+  }
+}
+
+// Este objeto se consume en:
+// 1. _utils.js → getCampaigns() → Extrae todas las ofertas
+// 2. contractProductSection.js → getCampaignsChannels() → Genera canales automáticamente
+// 3. _configOperativeUtils.js → Configura analytics
+// 4. glomo-campaigns-dm-mx → includeOffers
+```
+
+**NO es solo para listado ni solo para page**, es la **CONFIGURACIÓN MAESTRA** del sistema de ofertas.
+
+---
+
+## 3️⃣ **includeOffers en glomo-campaigns-dm-mx** 
+
+### ✅ **Respuesta 3: includeOffers se genera AUTOMÁTICAMENTE**
+
+```javascript
+// En _cross-components.js línea 4955:
+const campaignsCode = Object.keys(utils.getCampaignsCode());
+
+// Esto ejecuta:
+getCampaignsCode() {
+  const campaignAnalytics = getCampaignAnalytics(); // Lee _ocAccess.js
+  return Object.keys(campaignAnalytics).reduce(
+    (acc, code) => Object.assign(acc, campaignAnalytics[code].productName), {}
+  );
+}
+
+// Resultado: includeOffers = ['0557', '0788', '0766', '0785', '0813', ...]
+```
+
+**¿Necesitas agregarlo manualmente?** ❌ **NO**
+
+Se genera automáticamente desde _ocAccess.js:
+```javascript
+// Si tienes esto en _ocAccess.js:
+'payroll-portability': {
+  productName: { '0557': 'cuenta nomina' }  // ← Este '0557' se extrae
+}
+
+// Automáticamente se incluye en:
+includeOffers: ['0557', '0788', '0766', ...]
+```
+
+**¿Qué pasa si NO se incluye?**
+- El backend **SÍ devuelve** la oferta
+- Pero `glomo-campaigns-dm-mx` la **FILTRA** y no la muestra
+- **NO aparecerá** en la lista de oportunidades
+
+---
+
+## 4️⃣ **El Binding Automático - AQUÍ ESTÁ LA MAGIA** 🎩✨
+
+Tienes razón, no lo ves explícitamente porque **se genera automáticamente**: 
+
+### ✅ **Respuesta 4: EL BINDING ESTÁ EN LA LÍNEA 11** 🎯
+
+```javascript
+// contractProductSection.js línea 11:
+const campaignsChannels = utils.getCampaignsChannels(PAGE_NAME);
+
+// línea 32:
+const outChannels = {
+  ...campaignsChannels,  // ← AQUÍ SE EXPANDEN TODOS LOS BINDINGS AUTOMÁTICAMENTE
+  // ... otros canales manuales ...
+};
+
+// línea 260:
+cellsConnections: {
+  out: outChannels  // ← Aquí se asignan
+}
+```
+
+**Paso a paso de cómo funciona:**
+
+```javascript
+// 1. Se llama a getCampaignsChannels('contractProductSection')
+const campaignsChannels = utils.getCampaignsChannels('contractProductSection');
+
+// 2. Esto ejecuta (en _utils.js línea 1042):
+const getCampaignsChannels = (PAGENAME) => {
+  const campaigns = getCampaigns();  // Trae TODAS las ofertas de _constants.js
+  const channelName = (code) => 
+    `${snakeCase(PAGENAME)}_oc_banner_${code}_clicked`.replace(/-/g, '_');
+  const eventName = (code) => 
+    `cells-oc-banner-click-${code}`.replace(/_/g, '-');
+  
+  let channelOut = {};
+  
+  // 3. PARA CADA oferta genera el binding:
+  Object.keys(campaigns).forEach((campaign) => {
+    channelOut[channelName(campaigns[campaign].code)] = {
+      bind: eventName(campaigns[campaign].code),
+      link: campaigns[campaign].link
+    };
+  });
+  
+  return channelOut;
+};
+
+// 4. RESULTADO (objeto generado automáticamente):
+{
+  contract_product_section_oc_banner_payroll_portability_clicked: {
+    bind: 'cells-oc-banner-click-payroll-portability',
+    link: {
+      page: 'ocPayrollPortability',
+      params: { offerId: 'offerId' }
+    }
+  },
+  contract_product_section_oc_banner_debit_card_request_clicked: {
+    bind: 'cells-oc-banner-click-debit-card-request',
+    link: { page: 'requestDebitCard', params: { offerId: 'offerId' } }
+  },
+  // ... y así para TODAS las ofertas en _constants.js
+}
+
+// 5. Se expande con spread operator en línea 32:
+const outChannels = {
+  ...campaignsChannels,  // ← Aquí se inyectan TODOS los bindings
+  // ofertas adicionales manuales...
+};
+```
+
+---
+
+## 📊 **RESUMEN VISUAL**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. _constants.js                                                │
+│    OCPP: { code: 'payroll-portability', page: '...' }          │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 2. _utils.js → getCampaigns()                                   │
+│    Lee _constants.js y retorna todas las ofertas               │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 3. _utils.js → getCampaignsChannels('contractProductSection')  │
+│    GENERA AUTOMÁTICAMENTE:                                      │
+│    {                                                            │
+│      contract_product_section_oc_banner_payroll_portability... │
+│         bind: 'cells-oc-banner-click-payroll-portability'      │
+│         link: { page: 'ocPayrollPortability' }                 │
+│    }                                                            │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 4. contractProductSection.js línea 11                           │
+│    const campaignsChannels = utils.getCampaignsChannels(...)   │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 5. contractProductSection.js línea 32                           │
+│    const outChannels = { ...campaignsChannels, ... }           │
+│    ← AQUÍ SE EXPANDEN TODOS LOS BINDINGS                       │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 6. contractProductSection.js línea 260                          │
+│    cellsConnections: { out: outChannels }                      │
+│    ← Se asignan a cells-oc-banner-list-spherica                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🎯 **CONCLUSIONES**
+
+1. **`'0557'` es el código oficial** (LDA), `'cuenta nomina'` es semi-arbitrario pero debe coincidir con analytics
+2. **_constants.js define a nivel de sistema completo** - es el catálogo maestro de ofertas
+3. **`includeOffers` se genera automáticamente** desde los `productName` en _ocAccess.js
+4. **Los bindings NO están escritos explícitamente** porque se generan con `getCampaignsChannels()` y se expanden con `...campaignsChannels`
+
+**Por eso NUNCA ves escrito:**
+```javascript
+contract_product_section_oc_banner_payroll_portability_clicked: {
+  bind: 'cells-oc-banner-click-payroll-portability'
+}
+```
+
+**Porque se genera automáticamente** a partir de la definición en _constants.js ✨
