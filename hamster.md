@@ -772,3 +772,175 @@ contract_product_section_oc_banner_payroll_portability_clicked: {
 ```
 
 **Porque se genera automáticamente** a partir de la definición en _constants.js ✨
+
+# Fourth question
+
+## 1. ¿Los archivos de analíticas son exclusivos para analíticas?
+
+**Respuesta: SÍ**, son exclusivos para analíticas.
+
+- Si borras `_ocPayrollPortabilityN2.js` o su configuración en `_configOperativeUtils.js`, **TODO lo demás seguirá funcionando**
+- El renderizado de ofertas, navegación, bindings, etc., **NO dependen** de los archivos de analíticas
+- La analítica es un sistema **paralelo y desacoplado** del flujo funcional
+
+**Dependencias funcionales vs analíticas:**
+- ✅ **Funcional** (necesario): `_constants.js`, _cross-components.js, _operationals.js
+- 📊 **Analítico** (opcional): `_ocAccess.js`, `_ocPayrollPortabilityN2.js`, `_configOperativeUtils.js`
+
+---
+
+## 2. ¿Cómo ubicar componentes en proceedings.js?
+
+Veo que **proceedings.js** sí existe. Del código:
+
+**Componente principal:**
+```javascript
+tag: 'bbva-feature-proceedings'
+tagSpherica: 'bbva-feature-proceedings-spherica'
+familyPath: '@glomo-web-components/bbva-feature-proceedings'
+```
+
+**Parámetros recibidos desde la oferta:**
+```javascript
+// En _constants.js configuraste:
+link: { 
+  page: 'proceedings', 
+  params: { offerId: 'offerId' } 
+}
+
+// proceedings.js recibe parámetros a través de cellsConnections:
+params: {
+  productId: 'productId',
+  feedbackOperation: 'feedbackOperation'
+}
+```
+
+**Canales de entrada relevantes para tu oferta:**
+```javascript
+navigate_to_pivot_proceedings: {
+  bind: 'setPropertiesInit'  // Inicializa propiedades
+},
+navigation_from_deep_link_to_operations: {
+  bind: 'initPropertiesFromDeeplink'  // Para deep links
+},
+upgrade_customer_hybrid_send_data_to_proceedings: {
+  bind: 'setPropertiesInit'
+}
+```
+
+**Canales de salida para continuar el flujo:**
+```javascript
+send_from_proceedings_to_portability: {
+  bind: 'bbva-feature-proceedings-porta-n2-continue-button-link',
+  link: { page: 'payrollPortability' }  // ← Navega a portabilidad
+}
+```
+
+---
+
+## 3. ¿_ocAccess.js es catálogo maestro o archivo de analíticas?
+
+**Respuesta: Es AMBOS** (híbrido con funcionalidad dual):
+
+```javascript
+// _utils.js línea 1035-1043
+const getCampaignsCode = () => {
+  const campaignAnalytics = getCampaignAnalytics(); // ← Lee _ocAccess.js
+  return Object.keys(campaignAnalytics).reduce(
+    (acc, code) => Object.assign(acc, campaignAnalytics[code].productName), {});
+};
+
+// _cross-components.js línea 5180
+includeOffers: campaignsCode,  // ← Auto-generado desde _ocAccess.js
+```
+
+**Doble función:**
+1. **📊 Analítica**: Define eventos de Adobe Analytics
+2. **⚙️ Funcional**: El campo `productName` se usa para generar `includeOffers` en `glomo-campaigns-dm-mx`
+
+Por eso es **obligatorio** para funcionalidad, no solo analítica.
+
+---
+
+## 4. ¿Por qué la nueva oferta aparece arriba en la lista?
+
+**Respuesta: NO agregamos configuración explícita de ordenamiento**
+
+El orden viene del **servicio API** en el campo `priority`. Del código de `glomo-campaigns-dm-mx`:
+
+```javascript
+// _cross-components.js línea 5199
+customizableOffers: {
+  LOANS: {
+    '0835': {
+      description: 'Trae tu nómina',
+      // NO hay campo "priority" aquí
+    }
+  }
+}
+```
+
+**El orden lo controla:**
+1. El **API** `/campaigns/v1` devuelve ofertas con campo `priority`
+2. El componente `cells-oc-banner-list-spherica` ordena por `priority`
+3. Si tiene `priority: 0`, aparece primero
+
+**Para verificar:** Revisa el JSON del API que compartiste, debe tener un campo `priority` bajo.
+
+---
+
+## 5. ¿Qué alcance tienen las configuraciones en _operationals.js?
+
+**Respuesta: Es para el DASHBOARD (smart spaces) y feature flags**
+
+```javascript
+// _operationals.js línea 341-348
+const homeNBA = [
+  createDictionaryEntry('sales.0835', ['glomo.contractProductSection.ocPayrollPortabilityN2']),
+  // ...
+];
+
+// _config.js línea 206
+{
+  id: 'home_nba',  // ← Smart Space en dashboard
+  collections: [{
+    modelCollection: 'nba',
+    elements: []  // ← Aquí se renderizarían ofertas NBA
+  }]
+}
+```
+
+**Tres funciones:**
+
+1. **Dashboard Smart Spaces**: El array `homeNBA` define qué ofertas pueden aparecer en el espacio "NBA" del dashboard
+   - `home_nba`: Next Best Action (ofertas personalizadas)
+   - `home_nbo`: Next Best Offer
+   - `home_maincard`: Tarjetas principales
+
+2. **Feature Flag Mapping**: 
+   ```javascript
+   '0835': {
+     flag: 'glomo.contractProductSection.ocPayrollPortabilityN2',
+     lda: '0835'
+   }
+   ```
+   Mapea product ID → feature flag para habilitar/deshabilitar
+
+3. **Diccionario de productos**: Consolida todas las ofertas del sistema con sus flags correspondientes
+
+**NO es solo para el dashboard**, también se usa para:
+- Filtrar ofertas según feature flags activos
+- Validar si una oferta está habilitada antes de mostrarla en **cualquier** página
+
+---
+
+## Resumen:
+
+| Archivo | Propósito | ¿Es obligatorio? |
+|---------|-----------|------------------|
+| `_constants.js` | Catálogo maestro - Define ofertas | ✅ Sí |
+| `_ocAccess.js` | Analíticas + `includeOffers` | ✅ Sí (dual) |
+| _cross-components.js | Customización visual | ✅ Sí |
+| _operationals.js | Dashboard + feature flags | ✅ Sí |
+| `_ocPayrollPortabilityN2.js` | Eventos analíticos específicos | ❌ No (solo analytics) |
+| `_configOperativeUtils.js` | Registro de módulos analíticos | ❌ No (solo analytics) |
