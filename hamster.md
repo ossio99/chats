@@ -944,3 +944,148 @@ const homeNBA = [
 | _operationals.js | Dashboard + feature flags | ✅ Sí |
 | `_ocPayrollPortabilityN2.js` | Eventos analíticos específicos | ❌ No (solo analytics) |
 | `_configOperativeUtils.js` | Registro de módulos analíticos | ❌ No (solo analytics) |
+
+---
+
+# Fifth question - _operationals.js operation
+
+## 📊 Alcance de _operationals.js - Aclarando la Confusión
+
+### **`offersFlagsData` en _operationals.js**
+
+```javascript
+// dashboard/_operationals.js línea 528
+const offersFlagsData = {
+  '0835': {
+    flag: 'glomo.contractProductSection.ocPayrollPortabilityN2', 
+    lda: '0835'
+  },
+  // ... más ofertas
+};
+```
+
+**Este objeto tiene DOBLE alcance:**
+
+#### **1. Para el Dashboard (NBA/NBO Smart Spaces):**
+```javascript
+// dashboard/_operationals.js línea 341-348
+const homeNBA = [
+  createDictionaryEntry('sales.0835', ['glomo.contractProductSection.ocPayrollPortabilityN2']),
+];
+
+// Esto controla QUÉ ofertas pueden aparecer en el dashboard
+```
+
+#### **2. Para glomo-campaigns-dm-mx (GLOBAL):**
+```javascript
+// _cross-components.js línea 5180
+objectOffersFlags: offersFlagsData,  // ← Se pasa al DM
+
+// El componente glomo-campaigns-dm-mx usa esto para FILTRAR ofertas
+// en TODAS las páginas: dashboard, contractProductSection, etc.
+```
+
+### **Flujo de Filtrado en glomo-campaigns-dm-mx:**
+
+```javascript
+// components/glomo-campaigns-dm/glomo-campaigns-dm-mx.js línea 392
+_filterFlagsOffers(offers) {
+  return offers.filter(offer => {
+    const productId = offer.config.product.productId;
+    
+    // 1. Busca en objectOffersFlags (viene de _operationals.js):
+    const offerFlag = this.objectOffersFlags[productId];
+    
+    if (!offerFlag) {
+      return true; // Si no está en la lista, se permite
+    }
+    
+    // 2. Verifica si el feature flag está activo:
+    const flagConfig = this.featureFlagsCollection[offerFlag.flag];
+    
+    // 3. Solo permite la oferta si flag.value === true:
+    return flagConfig && flagConfig.value === true;
+  });
+}
+```
+
+**Conclusión:** SÍ, la configuración en _operationals.js afecta **contractProductSection** y cualquier otra página que muestre ofertas.
+
+---
+
+Excelente pregunta. Voy a explicarte **exactamente** cómo funciona el flujo completo, porque es crucial entender que hay **DOS sistemas independientes pero relacionados**:
+
+---
+
+## 🎯 Flujo Completo: Feature Flags + Ofertas
+
+### **1. Feature Flags: Se cargan desde un SERVICIO**
+
+```javascript
+// Las feature flags se recuperan de un servicio REST:
+// GET /app-settings/v1 o similar
+
+// Respuesta típica:
+{
+  "featureFlags": {
+    "glomo.contractProductSection.ocPayrollPortabilityN2": true,
+    "glomo.contractProductSection.ocPayrollPortability": true,
+    "glomo.offers.dynamicLifeInsuranceMxn": false,
+    // ... más banderas
+  }
+}
+```
+
+**Este servicio es gestionado por:**
+- `glomo-loading-manager` o similar
+- Se carga al iniciar sesión
+- Se dispara el canal `global_feature_flag_collection_updated`
+
+### **2. Ofertas: Se cargan desde OTRO servicio**
+
+```javascript
+// Las ofertas se recuperan de:
+// GET /campaigns/v1/offers
+
+// Respuesta típica:
+{
+  "data": {
+    "offers": [
+      {
+        "id": "offer-id-123",
+        "product": {
+          "id": "0835",  // ← Este es el LDA code
+          "type": "LOANS"
+        },
+        "name": "Trae tu nómina",
+        "priority": 0
+        // ...
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 🔗 Conexión: _operationals.js es el MAPEO
+
+_operationals.js **NO crea las banderas**, solo define **la relación** entre:
+- **Product ID** (0835) ↔ **Feature Flag** (glomo.contractProductSection.ocPayrollPortabilityN2)
+
+```javascript
+// dashboard/_operationals.js
+const offersFlagsData = {
+  '0835': {
+    flag: 'glomo.contractProductSection.ocPayrollPortabilityN2',  // ← Nombre de la bandera
+    lda: '0835'  // ← ID del producto
+  }
+};
+```
+
+Este objeto se pasa a `glomo-campaigns-dm-mx`:
+
+```javascript
+// _cross-components.js
+objectOffersFlags: offersFlagsData,  // ← Se inyecta al componente
+```
