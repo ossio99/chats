@@ -1089,3 +1089,75 @@ Este objeto se pasa a `glomo-campaigns-dm-mx`:
 // _cross-components.js
 objectOffersFlags: offersFlagsData,  // ← Se inyecta al componente
 ```
+# Sixth question
+
+**Tu override SÍ incluye la oferta 0835, pero tiene dos problemas estructurales:** 
+
+Veo que se revirtió mi inyección del mock. Perfecto, porque tu override es la solución correcta. El problema es que **tu payload tiene dos errores**:
+
+## Problemas en tu override de la oferta 0835:
+
+```javascript
+{
+  "id": "pLgwPVbPyLfmRYY_zTCf3F_KE01Jl9q5",
+  "product": {
+    "id": "0835",
+    "productType": {
+      "id": "CARDS"  // ❌ PROBLEMA 1: Debería ser "ACCOUNTS"
+    }
+  },
+  // ❌ PROBLEMA 2: Falta completamente el campo "offerType"
+  "image": { ... }
+}
+```
+
+**Por eso no funcionaba originalmente:**
+
+1. **`productType.id: "CARDS"`** → El filtro `_filterOffersByPage()` solo muestra ofertas de tipo `ACCOUNTS` en `contractProductSection`, por eso la oferta no aparecía
+
+2. **Falta `offerType`** → El método `_parseBannerType()` no puede extraer el tipo, entonces defaultea a "coming-soon"
+
+## Solución: Corrige tu override así:
+
+```json
+{
+  "id": "pLgwPVbPyLfmRYY_zTCf3F_KE01Jl9q5",
+  "name": "Trae tu nómina",
+  "description": "Tus beneficios ya estan aquí, no los dejes escapar.",
+  "priority": 1000000,
+  "isSimulationAllowed": false,
+  "isImproved": false,
+  "isShownInDashboard": false,
+  "period": {
+    "startDate": "2025-06-01",
+    "endDate": "2026-12-31"
+  },
+  "product": {
+    "id": "0835",
+    "contractId": "jHImr_oth7bCpPPq2pTWkuKjvDPbnws-zvVxnym9chw",
+    "productType": {
+      "id": "ACCOUNTS"
+    }
+  },
+  "offerType": {
+    "id": "payroll-portability-n2"
+  },
+  "origin": {
+    "id": "CRM",
+    "description": "NEW_OFFER_APX"
+  },
+  "image": {
+    "id": "X_-_TNSBSJWYNGOSAxKcCOuP9PhBV6mW",
+    "name": "avatar_CAMPAIGN0835-OF",
+    "url": "http://archivingbbva.axtel.mx:8082/v2/documents/logo?key=avatar_CAMPAIGN0835-OF"
+  },
+  "isRead": false,
+  "links": []
+}
+```
+
+**Cambios necesarios:**
+- `productType.id`: `"CARDS"` → `"ACCOUNTS"`
+- Agregar campo `"offerType": { "id": "payroll-portability-n2" }`
+
+Con esto, **solo necesitarías los 6 archivos iniciales** y el hardcoded del feature flag. La inyección manual del mock ya no sería necesaria.
