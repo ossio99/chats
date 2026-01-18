@@ -1161,3 +1161,35 @@ Veo que se revirtió mi inyección del mock. Perfecto, porque tu override es la 
 - Agregar campo `"offerType": { "id": "payroll-portability-n2" }`
 
 Con esto, **solo necesitarías los 6 archivos iniciales** y el hardcoded del feature flag. La inyección manual del mock ya no sería necesaria.
+
+# Seventh question
+## 1️⃣ ¿Cómo se dedujeron los nombres de los canales automáticos?
+
+**No se "dedujeron" - se calculan automáticamente** usando la fórmula en _utils.js:
+
+```javascript
+const channelName = (code) => 
+  `${snakeCase(PAGENAME)}_oc_banner_${code}_clicked`
+    .replace(/-/g, '_')
+    .toLowerCase();
+```
+
+### Ejemplo práctico para la oferta 0835:
+
+1. **PAGENAME** = `'contractProductSection'`
+2. **code** = `'payroll-portability-n2'` (del diccionario CAMPAIGNS)
+3. **snakeCase** convierte `contractProductSection` → `contract_product_section`
+4. **Resultado final**: `contract_product_section_oc_banner_payroll_portability_n2_clicked`
+
+### ¿Cómo lo supiste para hacer el binding en proceedings?
+
+Simplemente **seguiste la fórmula**:
+- Página: `contractProductSection` → snake_case → `contract_product_section`
+- Sufijo: `_oc_banner_{code}_clicked`
+- Code de la oferta: `payroll-portability-n2` → reemplazas `-` por `_` → `payroll_portability_n2`
+
+**Es predecible y sistemático**, no necesitas adivinar. Lo mismo funciona para dashboard:
+
+```javascript
+dashboard_oc_banner_payroll_portability_n2_clicked
+```
