@@ -1193,3 +1193,22 @@ Simplemente **seguiste la fórmula**:
 ```javascript
 dashboard_oc_banner_payroll_portability_n2_clicked
 ```
+
+## Mapeo de payload mandado en la navegacion de la oferta
+components/cells-oc-banner-spherica/cells-oc-banner-spherica.js -> _navigateFromAction()
+```javascript
+detail: {
+  offerType: this.get('offerType.id', this.config),
+  offerId: this.get('offerId', this.config),
+  offerName: this.get('name', this.config),
+  productId: this.get('product.contractId', this.config),
+  productTypeId: this.get('product.productTypeId', this.config),
+  subproductTypeId: this.get('product.subproductTypeId', this.config),
+  amount: this.get('amount.amount', this.config),
+  contractId: this.get('product.productId', this.config),
+  tripId: this.get('tripId', this.config),
+  link: this.get('link', this.config),
+  originalProduct: this.config || {},  // ← AQUÍ está el truco
+  continue: this.continue
+}
+```
